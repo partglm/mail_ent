@@ -1,28 +1,42 @@
 <!DOCTYPE html>
+<div id="b">
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 </head>
-<div id="b"></div>
 <body>
     <script> 
         async function afae() {
-            //const c = prompt('user')
-            //const b = prompt('mdp')
+            if (!localStorage.getItem('user')) {
+                const c = prompt('user')
+                localStorage.setItem('user', c)
+            }
+            
+            if (!localStorage.getItem('mdp')) {
+                const b = prompt('mdp')
+                localStorage.setItem('mdp', b)
+            }
+
             const response = await fetch('/auth', {
                 method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({user: localStorage.getItem('user'), mdp: localStorage.getItem('mdp')})
             })
             const a = await response.json()
-            console.log(a)
-            document.getElementById('b').innerHTML = a.data;
+            if (a.def == 200) console.log('good');
+            if (a.def !== 200) console.log('error');
+            
 
-            const az = await fetch('/send', { method: 'POST' })
-            const bz = await az.json()
-            console.log(bz.result)
+            //const az = await fetch('/send', { method: 'POST' })
+            //const bz = await az.json()
+            //console.log(bz.result)
         }
         afae()
     </script>
 </body>
 </html>
+</div>

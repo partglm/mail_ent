@@ -6,8 +6,9 @@ const sendMessage = require('./d');
 
 const app = express()
 
-const PORT = 8080;
+const PORT = 8090;
 const server = http.createServer(app);
+app.use(express.json());
 
 app.get('/', (req,res) => {
     res.sendFile(__dirname + '/a.html')
@@ -20,17 +21,31 @@ app.get('/ent', async (req,res) => {
   res.send(body);
 })
 
-app.post('/auth', async (req,res) => {
-  const b = await a()
-  res.json({data : b})
-})
+app.post('/auth', async (req, res) => {
+  log(req.body);
+  const { user, mdp } = req.body;
+  const result = await a(user, mdp);
+
+  if (result.status === 'ok') {
+    log('auth good')
+    res.json({def: result.code});
+  } else {
+    log('❌ Échec login ENT:', result.error);
+    res.status(401).json({ error: 'Échec de la connexion ENT', detail: result });
+  }
+});
 
 app.post('/send', async (req, res) => {
   const result = await sendMessage();
   res.json({result: result});
 });
 
+app.get('/temp', (req,res) => {
+  res.sendFile(__dirname, 'b.html')
+})
+
 app.use(async (req, res, next) => {
+  log(req.url)
   try {
     const targetUrl = "https://ent.ecollege78.fr" + req.url
 
@@ -45,7 +60,7 @@ let body = await response.text();
 res.send(body);
 
   } catch (err) {
-    error(err.message)
+    error(err.message+ 'IDK   ')
     res.status(500).send("Erreur proxy globale : " + err.message);
   }
 });
