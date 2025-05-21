@@ -1,7 +1,6 @@
 // a.js
 const axios = require('axios');
 const qs = require('qs');
-const { log } = require('console')
 
 async function loginENT(user, password) {
   const loginUrl = 'https://ent.ecollege78.fr/auth/login';
@@ -12,14 +11,11 @@ async function loginENT(user, password) {
     details: ''
   });
 
-  const baseCookies = [
-    'atuserid={"name":"atuserid","val":"68194721-5a9c-44a4-b79f-276ab8228365","options":{"end":"2026-03-18T17:24:03.931Z","path":"/"}}',
-    'atidvisitor={"name":"atidvisitor","val":{"vrn":"-365070-","at":"529752489799521024553539849455249555045579710210045102485510049539810254555156","ac":"ELEVE"},"options":{"path":"/","session":15724800,"end":15724800}}',
-    'webviewignored=true:rEKJsPr6BjJjJ098XqxA1YQLQpw='
-  ];
+  // ✅ Seulement ce cookie de départ, comme tu l’as demandé
+  const initialCookie = 'webviewignored=true:rEKJsPr6BjJjJ098XqxA1YQLQpw=';
 
   const headers = {
-    'Cookie': baseCookies.join('; '),
+    'Cookie': initialCookie,
     'Content-Type': 'application/x-www-form-urlencoded',
     'Origin': 'https://ent.ecollege78.fr',
     'Referer': 'https://ent.ecollege78.fr/auth/login',
@@ -27,33 +23,37 @@ async function loginENT(user, password) {
   };
 
   try {
-    // login ENT
+    // 🔐 Étape 1 : POST /auth/login
     const loginResponse = await axios.post(loginUrl, loginData, {
       headers,
       maxRedirects: 0,
-      validateStatus: s => s === 302,
+      validateStatus: status => status === 302 // redirection après succès
     });
 
     const setCookies = loginResponse.headers['set-cookie'];
+    if (!setCookies) throw new Error("Aucun cookie de session reçu");
+
+    // ✅ Extraction des cookies reçus
     const sessionCookies = setCookies
-      .filter(c => c.startsWith('oneSessionId') || c.startsWith('XSRF-TOKEN') || c.startsWith('authenticated'))
-      .map(c => c.split(';')[0]);
+      .map(cookieStr => cookieStr.split(';')[0]) // on garde seulement `key=value`
+      .filter(cookie => /^(oneSessionId|authenticated|XSRF-TOKEN)=/.test(cookie));
 
-    const finalCookies = [...baseCookies, ...sessionCookies].join('; ');
+    const allCookies = [initialCookie, ...sessionCookies].join('; ');
 
-    // fetch page ENT après login
+    // 🏠 Étape 2 : GET / avec les cookies de session
     const homeResponse = await axios.get('https://ent.ecollege78.fr/', {
       headers: {
-        'Cookie': finalCookies,
+        'Cookie': allCookies,
         'User-Agent': headers['User-Agent'],
-        'Referer': loginUrl,
+        'Referer': loginUrl
       }
     });
-    
+
     return {
       status: 'ok',
       code: homeResponse.status,
-      data: homeResponse.data
+      data: homeResponse.data,
+      cookies: allCookies
     };
 
   } catch (err) {
@@ -65,4 +65,61 @@ async function loginENT(user, password) {
   }
 }
 
-module.exports = loginENT;
+
+
+
+
+
+// d.js
+
+async function sendMessage(cookie) {
+  console.log(cookie);
+  const headers = cookie
+
+  const draftBody = {
+    body: `<div>​</div><div>​</div><div><br></div><div class="signature new-signature">Cordialement Pierre Goas <br> élève et délégué suppléant <br> de la 3E2</div>`,
+    to: ['b551d9ca-5e49-452b-a070-b2efe9ddf4f4'],
+    cc: [],
+    cci: []
+  };
+
+  try {
+    // Étape 1 : sauvegarde comme brouillon
+    const draftResponse = await axios.post('https://ent.ecollege78.fr/conversation/draft', draftBody, { headers });
+    const id = draftResponse.data?.id;
+
+    if (!id) {
+      console.error("Réponse brouillon :", {
+        status: draftResponse.status,
+        headers: draftResponse.headers,
+        data: draftResponse.data
+      });
+      throw new Error("Impossible de récupérer l'ID du brouillon");
+    }
+    // Étape 2 : envoi du message
+    const sendBody = {
+      subject: 'a',
+      body: `<div class="ng-scope">​</div><div class="ng-scope">​a</div><div class="ng-scope">CCIDKWHATIDO22</div><div class="signature new-signature ng-scope">Cordialement Pierre Goas <br> élève et délégué suppléant <br> de la 3E2</div>`,
+      to: ['b551d9ca-5e49-452b-a070-b2efe9ddf4f4'],
+      cc: [],
+      cci: []
+    };
+
+    const sendUrl = `https://ent.ecollege78.fr/conversation/send?id=${id}`;
+    const sendResponse = await axios.post(sendUrl, sendBody, { headers });
+
+    console.log('✅ Message envoyé avec succès');
+    return sendResponse.data;
+
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'envoi du message :', error.message);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Réponse:', error.response.data);
+    }
+    return { erreur: 'Échec de l\'envoi du message.' };
+  }
+}
+
+module.exports.s = sendMessage;
+module.exports.a = loginENT;

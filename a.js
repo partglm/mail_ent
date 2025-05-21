@@ -1,8 +1,8 @@
 const http = require('http');
 const express = require('express');
 const { log, error } = require('console');
-const a = require('./c')
-const sendMessage = require('./d');
+const a = require('./c').a
+const sendMessage = require('./c').s;
 
 const app = express()
 
@@ -28,7 +28,7 @@ app.post('/auth', async (req, res) => {
 
   if (result.status === 'ok') {
     log('auth good')
-    res.json({def: result.code});
+    res.json({def: result.code, cookie: result.cookies});
   } else {
     log('❌ Échec login ENT:', result.error);
     res.status(401).json({ error: 'Échec de la connexion ENT', detail: result });
@@ -36,7 +36,7 @@ app.post('/auth', async (req, res) => {
 });
 
 app.post('/send', async (req, res) => {
-  const result = await sendMessage();
+  const result = await sendMessage(req.body.cp);
   res.json({result: result});
 });
 
